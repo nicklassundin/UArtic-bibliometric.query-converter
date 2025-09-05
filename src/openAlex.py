@@ -1,0 +1,636 @@
+import pyalex
+import hashlib
+import tqdm
+import os
+from pathlib import Path
+from pyalex import config
+from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
+import json
+from urllib.parse import quote
+from typing import Callable
+
+pyalex.config.email = "p4c@hotmail.com"
+
+# get execute arguments
+arguments = os.sys.argv
+print(arguments)
+debug = False
+# if '-d' in arguments, set debug to True
+if ('-d' in arguments) or ('--debug' in arguments):
+    debug = True
+# SAMPLE_SIZE = 1000
+SAMPLE_SIZE = 10
+
+
+import re
+def squash_spaces(s: str) -> str:
+    s = s.replace("\u00A0", " ")
+    return re.sub(r"\s+", " ", s).strip()
+
+# topics = Topics().get()
+# works = Works().filter(institutions={"country_code": "se"}).paginate(per_page=100)
+# works = Works().filter(
+        # institutions={"is_global_north": True}).paginate()
+
+def workToJson(work, name):
+    # hash name from string of class
+    work_hash = hashlib.sha256(str(work).encode('utf-8')).hexdigest()
+    if name:
+        work_hash = name
+
+    with open(Path("temp/" + work_hash + ".json"), "w") as f:
+        # convert work to json
+        # pretty print json
+        json.dump(work, f, indent=4)
+            # json.dump(Works().get(), f)
+# authors = Authors().search_filter(display_name="Leif Karlsson").get()
+# workToJson(authors, "leif")
+
+# authors = Authors().search_filter(display_name="Keith Larson").get()
+# workToJson(authors, "keith")
+
+# institutions = Institutions().filter(country_code="se").paginate(per_page=100)
+# institutions = Institutions().paginate(per_page=100)
+
+# complete_institutions = []
+# # progress bar
+# for institution in tqdm.tqdm(institutions):
+#     # merge institution with complete_institutions
+#     complete_institutions += institution
+
+# workToJson(complete_institutions, "institutions")
+
+
+# complete_works = []?
+# # progress bar
+# for work in tqdm.tqdm(works):
+#     # merge work with complete_works
+#     complete_works += work
+#     break;
+
+
+# workToJson(complete_works)
+
+# read all files in descriptions
+files = os.listdir("descriptions")
+# get file containing 'ARCTIC_TERMS*'
+file = [f for f in files if f.startswith("ARCTIC_TERMS")][0]
+
+# read xlsx file no header
+from openpyxl import load_workbook
+import pandas as pd
+print("Reading file:", file)
+wb = load_workbook(filename="descriptions/" + file, read_only=True)
+sheet = wb.worksheets[3]
+# convert to dataframe
+df = pd.DataFrame(sheet.values)
+# remove empty rows
+df = df.dropna(how='all')
+
+# RAW_QUERY = df.iloc[24,0]
+# RAW_TEST_QUERY = "TITLE-ABS ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
+# RAW_TEST_QUERY = "TITLE-ABS ( arctic )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
+# print("RAW_QUERY:", RAW_QUERY[:100])
+# RAW_TEST_QUERY = "( TITLE-ABS ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
+# RAW_TEST_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )'
+# RAW_TEST_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )'
+# tokens = lexer(RAW_TEST_QUERY)
+
+# import re
+import regex as re
+import sys
+
+print(df)
+strings = {}
+RAW_QUERY = ''
+for i in range(len(df)):
+    RAW_QUERY = df.iloc[i,0]
+    if not RAW_QUERY or not isinstance(RAW_QUERY, str):
+        continue
+    if df.iloc[i,3] == 'Merge' or df.iloc[i,3] == 'Final':    
+        # print(RAW_QUERY[0:100])
+        # for keys in strings.keys():
+        # reverse order
+        for key in sorted(strings.keys(), key=len, reverse=True):
+            # print(key)
+            RAW_QUERY = RAW_QUERY.replace(key, strings[key])
+        # print(RAW_QUERY[0:100])
+    key = df.iloc[i,1]
+    if key == None or not isinstance(key, str):
+        continue
+    strings[key] = RAW_QUERY
+
+# Scopus
+# import pybliometrics
+# from pybliometrics.scopus import ScopusSearch
+# pybliometrics.init()
+# s = ScopusSearch(RAW_TEST_QUERY, view="STANDARD", refresh=True)
+# print(len(s.results))
+# print(s.results[0].title) 
+# print(s.results[0].author_names) 
+
+import elsapy
+from elsapy.elsclient import ElsClient
+from elsapy.elssearch import ElsSearch
+con_file = open("./config/scopus.json")
+config = json.load(con_file)
+con_file.close()
+## Initialize client
+client = ElsClient(config['apikey'])
+# client.inst_token = config['insttoken']
+
+search = ElsSearch(RAW_QUERY, 'scopus')
+
+try:
+    answer = search.execute(client, get_all=False)
+except Exception as e:
+    print("Error occurred:", e)
+    with open("temp/scopus.error.json", "w") as f:
+        # dump e as string
+        json.dump(str(e), f)
+    sys.exit(1)
+
+df = pd.DataFrame(answer.results)
+df.to_excel("scopus.xlsx", index=False)
+exit()
+
+from dataclasses import dataclass
+from typing import List, Optional
+
+
+@dataclass
+class Tok:
+    kind: str
+    value: str
+    pos: int
+
+KEYWORDS = {'AND', 'OR', 'NOT'}
+
+@dataclass
+class AST: ...
+@dataclass
+class Ident(AST): name: str
+@dataclass
+class String(AST): value: str
+@dataclass
+class Number(AST): value: int
+@dataclass
+class Not(AST): expr: AST
+@dataclass
+class And(AST): left: AST; right: AST
+@dataclass
+class Or(AST): left: AST; right: AST
+@dataclass
+class Cmp(AST): field: str; op: str; value: AST
+@dataclass
+class Call(AST): func: str; arg: AST
+
+import tqdm
+from copy import deepcopy
+
+# A simple lexer for the query language
+# yields tokens one by one
+def lexer(string: str):
+    i, n = 0, len(string)
+    
+    bar = tqdm.tqdm(total=n, unit="chars", desc="Lexing")
+    while i < n:
+        bar.n = i
+        # add text
+        bar.set_postfix({'char': string[i], 'surround': string[i-5:i+5]})
+        bar.refresh()
+        # print(string[i:i+20])
+        # input("Press Enter to continue...")
+        c = string[i]
+        if c.isspace():
+            i += 1
+            continue
+
+        if c == '(':
+            yield Tok('LPAREN', c, i)
+            i += 1
+            continue
+        if c == ')':
+            yield Tok('RPAREN', c, i)
+            i += 1
+            continue
+
+        # compare operators
+        if c in '<>=':
+            j = i + 1
+            if j < n and string[j] == '=' and c in '<>':
+                yield Tok('OP', c + '=', i)
+                i = j + 1
+            yield Tok('OP', c, i)
+            i += 1
+            continue
+
+        if c == '"':
+            i0 = i;
+            i += 1
+            buffer = []
+            while i < n:
+                ch = string[i]
+                bar.n = i
+                bar.set_postfix({'char': ch, 'surround': string[i-5:i+5]})
+                bar.refresh()
+                if ch == '\\' and i + 1 < n:
+                    buffer.append(string[i + 1])
+                    i += 1
+                    continue
+                if ch == '"':
+                    i += 1
+                    break
+                buffer.append(ch)
+                i += 1
+            yield Tok('STRING', ''.join(buffer), i0)
+            continue
+
+        if c.isdigit():
+            i0 = i
+            while i < n and string[i].isdigit():
+                i += 1
+            yield Tok('NUMBER', string[i0:i], i0)
+            continue
+
+        # Word
+        if c.isalpha() or c == '_':
+            i0 = i
+            while i < n and (string[i].isalnum() or string[i] in "_-."):
+                i += 1
+            word = string[i0:i];
+            U = word.upper()
+            kind = U if U in KEYWORDS else 'IDENT'
+            yield Tok(kind, U if kind in KEYWORDS else word, i0)
+            continue
+
+        # fallback
+        yield Tok('CHAR', c, i); i += 1
+
+# A recursive descent parser for the query language
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = list(tokens) + [Tok('EOF', '', len(tokens))]
+        self.pos = 0
+    def peek(self):
+        return self.tokens[self.pos]
+
+    def match(self, *kinds) -> Optional[Tok]:
+        t = self.peek()
+        if t and t.kind in kinds:
+            self.pos += 1
+            return t
+        return None
+    
+    def expect(self, *kinds) -> Tok:
+        t = self.match(*kinds)
+        if not t:
+            raise SyntaxError(f"expected one of {kinds}, got {self.peek().kind} at {self.peek().pos}")
+        return t
+
+    def parse(self):
+        node = self.parse_or()
+        if self.peek().kind != 'EOF':
+            print("test")
+            print(self.tokens[self.pos-2:self.pos])
+            raise SyntaxError(f"Unexpected token {self.peek().kind} at {self.peek().pos}")
+        return node
+    
+    def parse_or(self):
+        node = self.parse_and()
+        while self.match('OR'):
+            right = self.parse_and()
+            node = Or(node, right)
+        return node
+
+    def parse_and(self):
+        node = self.parse_not()
+        while self.match('AND'):
+            right = self.parse_not()
+            node = And(node, right)
+        return node
+
+    def parse_not(self):
+        if self.match('NOT'):
+            return Not(self.parse_not())
+        return self.parse_primary()
+
+    def parse_primary(self) -> AST:
+        if self.match('LPAREN'):
+            node = self.parse_or()
+            self.expect('RPAREN')
+            return node
+
+        t = self.peek()
+        if t and t.kind == 'IDENT':
+            name = t.value;
+            self.pos += 1
+            if self.match('LPAREN'):
+                arg = self.parse_or()
+                self.expect('RPAREN')
+                return Call(name, arg)
+
+            op_tok = self.match('OP')
+            if op_tok:
+                num = self.expect('NUMBER')
+                return Cmp(name, op_tok.value, Number(int(num.value)))
+
+            return Ident(name)
+
+        if self.match('STRING'):
+            return String(self.tokens[self.pos - 1].value)
+        if self.match('NUMBER'):
+            return Number(int(self.tokens[self.pos - 1].value))
+
+        t = self.peek()
+        raise SyntaxError(f"Unexpected token {t.kind} at {t.pos}")
+
+# Top-level function to parse a query string into an AST 
+def parse_query(query: str) -> AST:
+    toks = list(lexer(query))
+    # for t in toks:
+        # print(t)
+    return Parser(toks).parse()
+
+# A function to pretty-print the AST
+def dump(ast: AST, indent=0):
+    pad = '  ' * indent
+    if isinstance(ast, (Ident, String, Number)):
+        if isinstance(ast, Ident):  print(f"{pad}Ident({ast.name})")
+        if isinstance(ast, String): print(f'{pad}String("{ast.value}")')
+        if isinstance(ast, Number): print(f"{pad}Number({ast.value})")
+    elif isinstance(ast, Not):
+        print(f"{pad}Not("); dump(ast.expr, indent+1); print(f"{pad})")
+    elif isinstance(ast, And):
+        print(f"{pad}And("); dump(ast.left, indent+1); dump(ast.right, indent+1); print(f"{pad})")
+    elif isinstance(ast, Or):
+        print(f"{pad}Or("); dump(ast.left, indent+1); dump(ast.right, indent+1); print(f"{pad})")
+    elif isinstance(ast, Cmp):
+        print(f"{pad}Cmp(field={ast.field!r}, op={ast.op!r}, value={ast.value.value})")
+    elif isinstance(ast, Call):
+        print(f"{pad}Call(func={ast.func!r},")
+        dump(ast.arg, indent+1)
+        print(f"{pad})")
+    else:
+        print(f"{pad}{ast}")
+
+
+# A function to convert the AST to a LaTeX-like math representation
+def to_math(ast) -> str:
+        if isinstance(ast, Ident):
+            return ast.name
+        if isinstance(ast, String):
+            return f'"{ast.value}"'
+        if isinstance(ast, Number):
+            return str(ast.value)
+        if isinstance(ast, Not):
+            return r"\lnot " + to_math(ast.expr)
+        if isinstance(ast, And):
+            return f"( {to_math(ast.left)} \\land {to_math(ast.right)} )"
+        if isinstance(ast, Or):
+            return f"( {to_math(ast.left)} \\lor {to_math(ast.right)} )"
+        if isinstance(ast, Cmp):
+            return f"{ast.field} {ast.op} {to_math(ast.value)}"
+        if isinstance(ast, Call):
+            return f"\\text{{{ast.func}}}( {to_math(ast.arg)} )"
+        return "?"
+
+
+
+def compose(g, f):
+    def composed(x):
+        return g(f(x))
+    return composed
+
+# lazy composition 
+def lazy_compose(g, f):
+    def composed(x):
+        return g(f(x))
+    return composed
+
+def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
+    if isinstance(f, list):
+        results = []
+        for g in f:
+            g = mapToOpenAlex(ast, g)
+            if isinstance(g, list):
+                results += g
+            else:
+                results += [g]
+        return results
+    if isinstance(ast, And):
+        
+        g = mapToOpenAlex(ast.left, f)
+        g = mapToOpenAlex(ast.right, g)
+        return g
+    elif isinstance(ast, Or):
+        left = mapToOpenAlex(ast.left, f)
+        right = mapToOpenAlex(ast.right, f)
+        if not isinstance(left, list):
+            left = [left]
+        if not isinstance(right, list):
+            right = [right]
+        return left + right
+    elif isinstance(ast, Not):
+        # only support NOT DOCTYPE ( er )
+        if isinstance(ast.expr, Call) and ast.expr.func == 'DOCTYPE':
+            if isinstance(ast.expr.arg, Ident):
+                if ast.expr.arg.name.lower() == 'er':
+                    def g(x):
+                        if not x.__dict__.get('params', {}):
+                            return x.filter(type="!erratum")
+                        elif "!erratum" not in x.__dict__.get('params', {}).get('filter', {}).get('type', []):
+                            return x.filter(type="!erratum")
+                    return compose(g, f)
+        return f
+    elif isinstance(ast, Call):
+        # for TITLE-ABS
+        if ast.func == 'TITLE-ABS':
+            if isinstance(ast.arg, Or):
+                terms = []
+                def collect_terms(node):
+                    if isinstance(node, Or):
+                        collect_terms(node.left)
+                        collect_terms(node.right)
+                    elif isinstance(node, Ident):
+                        terms.append(node.name)
+                    elif isinstance(node, String):
+                        terms.append(node.value)
+                collect_terms(ast.arg)
+                terms = [quote(g, safe="") for g in terms]
+                # search_terms = "|".join(terms)
+                work = []
+                # split into 50 terms each
+                chunk_size = 50
+                terms = [terms[i:i + chunk_size] for i in range(0, len(terms), chunk_size)]
+                # for each chunk, create a separate function
+                for chunk in terms:
+                # for i in range(len(terms)):
+                    t = "|".join(chunk)
+                    def g(x):
+                        return x.search_filter(title = t)
+                    work.append(compose(g, f))
+                # def g(x):
+                    # return x.search_filter(title=search_terms)
+                # return compose(g, f)
+                return work
+            elif isinstance(ast.arg, Ident):
+                def g(x):
+                    return x.search_filter(title=ast.arg.name)
+                return compose(g, f)
+            elif isinstance(ast.arg, String):
+                def g(x):
+                    return x.search_filter(title=ast.arg.value)
+                return compose(g, f)
+        elif ast.func == 'AUTHKEY':
+            if isinstance(ast.arg, Or):
+                terms = []
+                def collect_terms(node):
+                    if isinstance(node, Or):
+                        collect_terms(node.left)
+                        collect_terms(node.right)
+                    elif isinstance(node, Ident):
+                        terms.append(node.name)
+                    elif isinstance(node, String):
+                        terms.append(node.value)
+                collect_terms(ast.arg)
+                
+                # reduce multiple " " spaces after
+                #' For safe search terms
+                # terms = [quote(g, safe="") for g in terms]
+                terms = [squash_spaces(g) for g in terms]
+                terms = [g.replace("'", "%27").replace(" ", "%20") for g in terms]
+                # TODO test if , is needed to be removed
+                terms = [g.replace(",", "") for g in terms]
+                # search_terms = "|".join(terms)
+                work = []
+                chunk_size = 50
+                terms = [terms[i:i + chunk_size] for i in range(0, len(terms), chunk_size)]
+                # for each chunk, create a separate function
+                for chunk in terms:
+                # for i in range(len(terms)):
+                    t = "|".join(chunk)
+                    def g(x):
+                        return x.search_filter(display_name = t)
+                    work.append(compose(g, f))
+                return work 
+            elif isinstance(ast.arg, Ident):
+                def g(x):
+                    return x.search_filter(display_name = ast.arg.name)
+                return compose(g, f)
+            elif isinstance(ast.arg, String):
+                def g(x):
+                    return x.search_filter(display_name = ast.arg.value)
+                return compose(g, f)
+        elif ast.func == 'DOCTYPE':
+            if isinstance(ast.arg, Ident):
+                if ast.arg.name.lower() == 'er':
+                    def g(x):
+                        if not x.__dict__.get('params', {}):
+                            return x.filter(type="erratum")
+                        elif "erratum" not in work.__dict__.get('params', {}).get('filter', {}).get('type', []):
+                            return x.filter(type="erratum")
+                    return compose(g, f)
+
+    if isinstance(ast, Cmp):
+        if ast.field == 'PUBYEAR':
+            if ast.op in ('>', '>=', '<', '<=') and isinstance(ast.value, Number):
+                if ast.op == '>':
+                    def g(x):
+                        if not x.__dict__.get('params', {}):
+                            return x.filter(from_publication_date=f"{ast.value.value + 1}-01-01")
+                        else:
+                            filters = x.__dict__.get("params", {}).get("filter", {})
+                            from_date = filters.get("from_publication_date", None)
+                            new_date = f"{ast.value.value + 1}-01-01"
+                            if not from_date or from_date < new_date:
+                                x = x.filter(from_publication_date=new_date) 
+                            return x
+                    return compose(g, f)
+                elif ast.op == '<':
+                    def g(x):
+                        if not x.__dict__.get('params', {}):
+                            return x.filter(to_publication_date=f"{ast.value.value - 1}-12-31")
+                        else:
+                            filters = x.__dict__.get("params", {}).get("filter", {})
+                            to_date = filters.get("to_publication_date", None)
+                            new_date = f"{ast.value.value - 1}-12-31"
+                            if not to_date or to_date > new_date:
+                                x = x.filter(to_publication_date=new_date) 
+                            return x
+                    return compose(g, f)
+
+    return f
+
+
+# tokens = lexer(RAW_QUERY)
+# print("tokens:", list(tokens)) 
+ast = parse_query(RAW_QUERY)
+# ast = parse_query(RAW_TEST_QUERY)
+dump(ast)
+markdown = to_math(ast)
+# save math to file markdown
+with open("temp/query_ast.md", "w", encoding="utf-8") as f:
+        f.write(markdown)
+
+
+# arguments AST and a lambda fucntion that returns same value in
+works = mapToOpenAlex(ast, lambda x: x)
+# compose all functions with Works()
+print(works)
+
+# works = parser(RAW_QUERY, works=Works())
+# print("Resulting query: ", works.__dict__)
+# save result.__dict__ to file
+
+data = {}
+with open("temp/result_query.json", "w") as f:
+    # empty data
+    for i, work in enumerate(works):
+        works[i] = work(Works())
+        data[i] = works[i].__dict__ 
+    # json.dump(works[i].__dict__, f, indent=4)
+    json.dump(data, f, indent=4)
+
+
+
+results = []
+print(len(works))
+bar = tqdm.tqdm(total=len(works), unit="queries", desc="Fetching works")
+for w in works:
+    bar.n += 1
+    bar.refresh()
+    try:
+        # for page in w.paginate(per_page=200):
+        if debug:
+            bar2 = tqdm.tqdm(total=SAMPLE_SIZE, unit="works", desc="Fetching pages", leave=False)
+            page = w.sample(SAMPLE_SIZE, seed=535).get()
+            bar2.n += 1;
+            bar2.refresh()
+            results += page
+        else:
+            bar2 = tqdm.tqdm(total=w.count(), unit="works", desc="Fetching pages", leave=False)
+            for page in w.paginate(per_page=200):
+                bar2.n += len(page)
+                bar2.refresh()
+                results.expand(page)
+                # save periodically (e.g. every 100 works)
+    except Exception as e:
+        print("Error occurred:", e)
+        # save whatever you got so far
+        with open("temp/error.json", "w") as f:
+            # dump e as string
+            json.dump(str(e), f)
+
+# map over results and keep entry['ids']
+results = [entry['ids'] for entry in results]
+
+with open("temp/backup.json", "w") as f:
+    print("Save Result")
+    json.dump(results, f)
+
+# save as xlsx file
+import pandas as pd
+df = pd.DataFrame(results)
+df.to_excel("output.xlsx", index=False)
+
