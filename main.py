@@ -13,9 +13,6 @@ debug = False
 if ('-d' in arguments) or ('--debug' in arguments):
     debug = True
 
-SAMPLE_SIZE = 10
-
-
 if not os.path.exists("./output"):
     print("Creating output directory...")
     os.makedirs("./output")
@@ -60,3 +57,8 @@ for i in range(len(df)):
 from src.elsapy import Scopus
 scopus = Scopus(RAW_QUERY)
 scopus.search()
+
+
+from src.openAlex import OpenAlex
+openalex = OpenAlex(RAW_QUERY, debug)
+openalex.rundown()

@@ -6,43 +6,24 @@ from pathlib import Path
 from pyalex import config
 from pyalex import Works, Authors, Sources, Institutions, Topics, Publishers, Funders
 import json
+import pandas as pd
 from urllib.parse import quote
 from typing import Callable
 
 pyalex.config.email = "p4c@hotmail.com"
-
-# get execute arguments
-arguments = os.sys.argv
-print(arguments)
-debug = False
-# if '-d' in arguments, set debug to True
-if ('-d' in arguments) or ('--debug' in arguments):
-    debug = True
-# SAMPLE_SIZE = 1000
-SAMPLE_SIZE = 10
-
 
 import re
 def squash_spaces(s: str) -> str:
     s = s.replace("\u00A0", " ")
     return re.sub(r"\s+", " ", s).strip()
 
+SAMPLE_SIZE = 10
+
 # topics = Topics().get()
 # works = Works().filter(institutions={"country_code": "se"}).paginate(per_page=100)
 # works = Works().filter(
         # institutions={"is_global_north": True}).paginate()
 
-def workToJson(work, name):
-    # hash name from string of class
-    work_hash = hashlib.sha256(str(work).encode('utf-8')).hexdigest()
-    if name:
-        work_hash = name
-
-    with open(Path("temp/" + work_hash + ".json"), "w") as f:
-        # convert work to json
-        # pretty print json
-        json.dump(work, f, indent=4)
-            # json.dump(Works().get(), f)
 # authors = Authors().search_filter(display_name="Leif Karlsson").get()
 # workToJson(authors, "leif")
 
@@ -61,65 +42,6 @@ def workToJson(work, name):
 # workToJson(complete_institutions, "institutions")
 
 
-# complete_works = []?
-# # progress bar
-# for work in tqdm.tqdm(works):
-#     # merge work with complete_works
-#     complete_works += work
-#     break;
-
-
-# workToJson(complete_works)
-
-# read all files in descriptions
-files = os.listdir("descriptions")
-# get file containing 'ARCTIC_TERMS*'
-file = [f for f in files if f.startswith("ARCTIC_TERMS")][0]
-
-# read xlsx file no header
-from openpyxl import load_workbook
-import pandas as pd
-print("Reading file:", file)
-wb = load_workbook(filename="descriptions/" + file, read_only=True)
-sheet = wb.worksheets[3]
-# convert to dataframe
-df = pd.DataFrame(sheet.values)
-# remove empty rows
-df = df.dropna(how='all')
-
-# RAW_QUERY = df.iloc[24,0]
-# RAW_TEST_QUERY = "TITLE-ABS ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
-# RAW_TEST_QUERY = "TITLE-ABS ( arctic )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
-# print("RAW_QUERY:", RAW_QUERY[:100])
-# RAW_TEST_QUERY = "( TITLE-ABS ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )"
-# RAW_TEST_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )'
-# RAW_TEST_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  ) )  OR  ( AUTHKEY ( arctic  OR  tundra  )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020  )  AND NOT  DOCTYPE ( er  )  )'
-# tokens = lexer(RAW_TEST_QUERY)
-
-# import re
-import regex as re
-import sys
-
-print(df)
-strings = {}
-RAW_QUERY = ''
-for i in range(len(df)):
-    RAW_QUERY = df.iloc[i,0]
-    if not RAW_QUERY or not isinstance(RAW_QUERY, str):
-        continue
-    if df.iloc[i,3] == 'Merge' or df.iloc[i,3] == 'Final':    
-        # print(RAW_QUERY[0:100])
-        # for keys in strings.keys():
-        # reverse order
-        for key in sorted(strings.keys(), key=len, reverse=True):
-            # print(key)
-            RAW_QUERY = RAW_QUERY.replace(key, strings[key])
-        # print(RAW_QUERY[0:100])
-    key = df.iloc[i,1]
-    if key == None or not isinstance(key, str):
-        continue
-    strings[key] = RAW_QUERY
-
 # Scopus
 # import pybliometrics
 # from pybliometrics.scopus import ScopusSearch
@@ -128,31 +50,6 @@ for i in range(len(df)):
 # print(len(s.results))
 # print(s.results[0].title) 
 # print(s.results[0].author_names) 
-
-import elsapy
-from elsapy.elsclient import ElsClient
-from elsapy.elssearch import ElsSearch
-con_file = open("./config/scopus.json")
-config = json.load(con_file)
-con_file.close()
-## Initialize client
-client = ElsClient(config['apikey'])
-# client.inst_token = config['insttoken']
-
-search = ElsSearch(RAW_QUERY, 'scopus')
-
-try:
-    answer = search.execute(client, get_all=False)
-except Exception as e:
-    print("Error occurred:", e)
-    with open("temp/scopus.error.json", "w") as f:
-        # dump e as string
-        json.dump(str(e), f)
-    sys.exit(1)
-
-df = pd.DataFrame(answer.results)
-df.to_excel("scopus.xlsx", index=False)
-exit()
 
 from dataclasses import dataclass
 from typing import List, Optional
@@ -563,74 +460,147 @@ def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
     return f
 
 
-# tokens = lexer(RAW_QUERY)
-# print("tokens:", list(tokens)) 
-ast = parse_query(RAW_QUERY)
-# ast = parse_query(RAW_TEST_QUERY)
-dump(ast)
-markdown = to_math(ast)
-# save math to file markdown
-with open("temp/query_ast.md", "w", encoding="utf-8") as f:
-        f.write(markdown)
 
 
-# arguments AST and a lambda fucntion that returns same value in
-works = mapToOpenAlex(ast, lambda x: x)
-# compose all functions with Works()
-print(works)
+class OpenAlex:
+    def __init__(self, query: str, debug: bool = False):
+        self.query = query
+        self.debug = debug
+        self.ast = parse_query(self.query)
+    def dump(self):
+        dump(self.ast)
+    def produceMarkdown(self):
+        markdown = to_math(self.ast)
+        with open("output/query.md", "w", encoding="utf-8") as f:
+            f.write(markdown)
+    def mapToOpenAlex(self):
+        works = mapToOpenAlex(self.ast, lambda x: x)
+        return works;
+    def process(self, works):
+        data = {}
+        with open("output/query.json", "w") as f:
+            for i, work in enumerate(works):
+                print(works[i])
+                works[i] = work(Works())
+                data[i] = works[i].__dict__
+            json.dump(data, f, indent=4)
+        return works
+    def execute(self, works):
+        results = []
+        bar = tqdm.tqdm(total=len(works), unit="queries", desc="Fetching works")
+        for w in works:
+            bar.n += 1
+            bar.refresh()
+            try:
+                # for page in w.paginate(per_page=200):
+                if self.debug:
+                    bar2 = tqdm.tqdm(total=SAMPLE_SIZE, unit="works", desc="Fetching pages", leave=False)
+                    page = w.sample(SAMPLE_SIZE, seed=535).get()
+                    bar2.n += 1;
+                    bar2.refresh()
+                    results += page
+                else:
+                    bar2 = tqdm.tqdm(total=w.count(), unit="works", desc="Fetching pages", leave=False)
+                    for page in w.paginate(per_page=200):
+                        bar2.n += len(page)
+                        bar2.refresh()
+                        results.expand(page)
+                        # save periodically (e.g. every 100 works)
+            except Exception as e:
+                print("Error occurred:", e)
+                # save whatever you got so far
+                with open("output/error.json", "w") as f:
+                    # dump e as string
+                    json.dump(str(e), f)
 
-# works = parser(RAW_QUERY, works=Works())
-# print("Resulting query: ", works.__dict__)
-# save result.__dict__ to file
+        # map over results and keep entry['ids']
+        results = [entry['ids'] for entry in results]
 
-data = {}
-with open("temp/result_query.json", "w") as f:
-    # empty data
-    for i, work in enumerate(works):
-        works[i] = work(Works())
-        data[i] = works[i].__dict__ 
-    # json.dump(works[i].__dict__, f, indent=4)
-    json.dump(data, f, indent=4)
+        with open("output/backup.json", "w") as f:
+            print("Save Result")
+            json.dump(results, f)
+
+        # save as xlsx file
+        df = pd.DataFrame(results)
+        df.to_excel("output.xlsx", index=False)
+
+    def rundown(self):
+        self.dump()
+        self.produceMarkdown()
+        works = self.mapToOpenAlex()
+        works = self.process(works)
+        self.execute(works)
 
 
 
-results = []
-print(len(works))
-bar = tqdm.tqdm(total=len(works), unit="queries", desc="Fetching works")
-for w in works:
-    bar.n += 1
-    bar.refresh()
-    try:
-        # for page in w.paginate(per_page=200):
-        if debug:
-            bar2 = tqdm.tqdm(total=SAMPLE_SIZE, unit="works", desc="Fetching pages", leave=False)
-            page = w.sample(SAMPLE_SIZE, seed=535).get()
-            bar2.n += 1;
-            bar2.refresh()
-            results += page
-        else:
-            bar2 = tqdm.tqdm(total=w.count(), unit="works", desc="Fetching pages", leave=False)
-            for page in w.paginate(per_page=200):
-                bar2.n += len(page)
-                bar2.refresh()
-                results.expand(page)
-                # save periodically (e.g. every 100 works)
-    except Exception as e:
-        print("Error occurred:", e)
-        # save whatever you got so far
-        with open("temp/error.json", "w") as f:
-            # dump e as string
-            json.dump(str(e), f)
+# # tokens = lexer(RAW_QUERY)
+# # print("tokens:", list(tokens)) 
+# ast = parse_query(RAW_QUERY)
+# # ast = parse_query(RAW_TEST_QUERY)
+# dump(ast)
+# markdown = to_math(ast)
+# # save math to file markdown
+# with open("temp/query_ast.md", "w", encoding="utf-8") as f:
+#         f.write(markdown)
 
-# map over results and keep entry['ids']
-results = [entry['ids'] for entry in results]
 
-with open("temp/backup.json", "w") as f:
-    print("Save Result")
-    json.dump(results, f)
+# # arguments AST and a lambda fucntion that returns same value in
+# works = mapToOpenAlex(ast, lambda x: x)
+# # compose all functions with Works()
+# print(works)
 
-# save as xlsx file
-import pandas as pd
-df = pd.DataFrame(results)
-df.to_excel("output.xlsx", index=False)
+# # works = parser(RAW_QUERY, works=Works())
+# # print("Resulting query: ", works.__dict__)
+# # save result.__dict__ to file
+
+# data = {}
+# with open("temp/result_query.json", "w") as f:
+#     # empty data
+#     for i, work in enumerate(works):
+#         works[i] = work(Works())
+#         data[i] = works[i].__dict__ 
+#     # json.dump(works[i].__dict__, f, indent=4)
+#     json.dump(data, f, indent=4)
+
+
+
+# results = []
+# print(len(works))
+# bar = tqdm.tqdm(total=len(works), unit="queries", desc="Fetching works")
+# for w in works:
+#     bar.n += 1
+#     bar.refresh()
+#     try:
+#         # for page in w.paginate(per_page=200):
+#         if debug:
+#             bar2 = tqdm.tqdm(total=SAMPLE_SIZE, unit="works", desc="Fetching pages", leave=False)
+#             page = w.sample(SAMPLE_SIZE, seed=535).get()
+#             bar2.n += 1;
+#             bar2.refresh()
+#             results += page
+#         else:
+#             bar2 = tqdm.tqdm(total=w.count(), unit="works", desc="Fetching pages", leave=False)
+#             for page in w.paginate(per_page=200):
+#                 bar2.n += len(page)
+#                 bar2.refresh()
+#                 results.expand(page)
+#                 # save periodically (e.g. every 100 works)
+#     except Exception as e:
+#         print("Error occurred:", e)
+#         # save whatever you got so far
+#         with open("temp/error.json", "w") as f:
+#             # dump e as string
+#             json.dump(str(e), f)
+
+# # map over results and keep entry['ids']
+# results = [entry['ids'] for entry in results]
+
+# with open("temp/backup.json", "w") as f:
+#     print("Save Result")
+#     json.dump(results, f)
+
+# # save as xlsx file
+# import pandas as pd
+# df = pd.DataFrame(results)
+# df.to_excel("output.xlsx", index=False)
 
