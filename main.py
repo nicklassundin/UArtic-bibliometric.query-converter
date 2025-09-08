@@ -54,6 +54,9 @@ for i in range(len(df)):
     strings[key] = RAW_QUERY
 
 
+if debug:
+    RAW_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"   )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020   )  AND NOT  DOCTYPE ( er ) )  OR  ( AUTHKEY ( arctic  OR  tundra   )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020   )  AND NOT  DOCTYPE ( er   )   )'        
+
 from src.elsapy import Scopus
 scopus = Scopus(RAW_QUERY)
 scopus.search()

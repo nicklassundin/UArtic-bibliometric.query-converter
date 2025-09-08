@@ -504,7 +504,8 @@ class OpenAlex:
                     for page in w.paginate(per_page=200):
                         bar2.n += len(page)
                         bar2.refresh()
-                        results.expand(page)
+                        results += page
+                        # results.expand(page)
                         # save periodically (e.g. every 100 works)
             except Exception as e:
                 print("Error occurred:", e)
@@ -522,7 +523,7 @@ class OpenAlex:
 
         # save as xlsx file
         df = pd.DataFrame(results)
-        df.to_excel("output.xlsx", index=False)
+        df.to_excel("output/output.xlsx", index=False)
 
     def rundown(self):
         self.dump()
