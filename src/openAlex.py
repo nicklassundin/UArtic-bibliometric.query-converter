@@ -196,6 +196,9 @@ def lazy_compose(g, f):
         return g(f(x))
     return composed
 
+
+# TODO
+# Refactor to generalized mapTo with structure OpenAlex or others convertions
 def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
     if isinstance(f, list):
         results = []
