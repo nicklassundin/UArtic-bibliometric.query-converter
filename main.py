@@ -57,10 +57,12 @@ for i in range(len(df)):
 if debug:
     RAW_QUERY = '( TITLE-ABS ( arctic  OR  tundra OR "PARANT"   )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020   )  AND NOT  DOCTYPE ( er ) )  OR  ( AUTHKEY ( arctic  OR  tundra   )  AND  ( PUBYEAR  >  2004  AND  PUBYEAR  <  2020   )  AND NOT  DOCTYPE ( er   )   )'        
 
+    # RAW_QUERY = 'TITLE-ABS-KEY("machine learning" AND "healthcare") AND PUBYEAR > 2020' 
 from src.elsapy import Scopus
 scopus = Scopus(RAW_QUERY)
 scopus.search()
 
+input("Press Enter to continue to OpenAlex...")
 
 from src.openAlex import OpenAlex
 openalex = OpenAlex(RAW_QUERY, debug)

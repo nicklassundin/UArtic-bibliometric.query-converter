@@ -31,8 +31,10 @@ class Scopus:
 
 
     def search(self):
+        print(self.query)
         search = ElsSearch(self.query, 'scopus')
         try: 
+            # answer = search.execute(self.client, get_all=True)
             answer = search.execute(self.client, get_all=False)
             with open("output/scopus.answer.json", "w") as f:
                 json.dump(str(e), f)
