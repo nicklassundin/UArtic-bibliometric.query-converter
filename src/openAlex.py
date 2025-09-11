@@ -197,9 +197,18 @@ def lazy_compose(g, f):
     return composed
 
 
-# TODO
+
+
+# abstract class Identifier to map to different systems
+# from abs import ABC, abstractmethod
+
+# @dataclass
+# class ConvertTable():
+#     def convert(ast: AST):
+         
+
 # Refactor to generalized mapTo with structure OpenAlex or others convertions
-def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
+def mapToOpenAlex(ast: AST, f: Callable[[], Works], negate = False) -> [Callable[[], Works]]:
     if isinstance(f, list):
         results = []
         for g in f:
@@ -210,7 +219,6 @@ def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
                 results += [g]
         return results
     if isinstance(ast, And):
-        
         g = mapToOpenAlex(ast.left, f)
         g = mapToOpenAlex(ast.right, g)
         return g
@@ -223,20 +231,22 @@ def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
             right = [right]
         return left + right
     elif isinstance(ast, Not):
-        # only support NOT DOCTYPE ( er )
-        if isinstance(ast.expr, Call) and ast.expr.func == 'DOCTYPE':
-            if isinstance(ast.expr.arg, Ident):
-                if ast.expr.arg.name.lower() == 'er':
-                    def g(x):
-                        if not x.__dict__.get('params', {}):
-                            return x.filter(type="!erratum")
-                        elif "!erratum" not in x.__dict__.get('params', {}).get('filter', {}).get('type', []):
-                            return x.filter(type="!erratum")
-                    return compose(g, f)
-        return f
+        return mapToOpenAlex(ast.expr, f, True)
     elif isinstance(ast, Call):
         # for TITLE-ABS
-        if ast.func == 'TITLE-ABS':
+        if ast.func == 'DOCTYPE':
+            if isinstance(ast.arg, Ident):
+                if ast.arg.name.lower() == 'er':
+                    value = 'erratum'
+                    if negate:
+                        value = '!'+value;
+                    def g(x):
+                        if not x.__dict__.get('params', {}):
+                             return x.filter(type=value)
+                        elif value not in x.__dict__.get('params', {}).get('filter', {}).get('type', []):
+                            return x.filter(type=value)
+                    return compose(g, f)
+        elif ast.func == 'TITLE-ABS':
             if isinstance(ast.arg, Or):
                 terms = []
                 def collect_terms(node):
@@ -256,14 +266,10 @@ def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
                 terms = [terms[i:i + chunk_size] for i in range(0, len(terms), chunk_size)]
                 # for each chunk, create a separate function
                 for chunk in terms:
-                # for i in range(len(terms)):
                     t = "|".join(chunk)
                     def g(x):
                         return x.search_filter(title = t)
                     work.append(compose(g, f))
-                # def g(x):
-                    # return x.search_filter(title=search_terms)
-                # return compose(g, f)
                 return work
             elif isinstance(ast.arg, Ident):
                 def g(x):
@@ -288,12 +294,10 @@ def mapToOpenAlex(ast: AST, f: Callable[[], Works]) -> [Callable[[], Works]]:
                 
                 # reduce multiple " " spaces after
                 #' For safe search terms
-                # terms = [quote(g, safe="") for g in terms]
                 terms = [squash_spaces(g) for g in terms]
                 terms = [g.replace("'", "%27").replace(" ", "%20") for g in terms]
                 # TODO test if , is needed to be removed
                 terms = [g.replace(",", "") for g in terms]
-                # search_terms = "|".join(terms)
                 work = []
                 chunk_size = 50
                 terms = [terms[i:i + chunk_size] for i in range(0, len(terms), chunk_size)]
