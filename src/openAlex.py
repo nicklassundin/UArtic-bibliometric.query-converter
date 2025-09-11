@@ -199,13 +199,13 @@ def lazy_compose(g, f):
 
 
 
-# abstract class Identifier to map to different systems
-# from abs import ABC, abstractmethod
-
+## TODO make structure for returning the corresponding string from RAW Query for reference
 # @dataclass
 # class ConvertTable():
-#     def convert(ast: AST):
+
          
+
+
 
 # Refactor to generalized mapTo with structure OpenAlex or others convertions
 def mapToOpenAlex(ast: AST, f: Callable[[], Works], negate = False) -> [Callable[[], Works]]:
