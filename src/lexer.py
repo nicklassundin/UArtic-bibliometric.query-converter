@@ -30,7 +30,7 @@ class Tok:
     value: str
     pos: int
 
-KEYWORDS = {'AND', 'OR', 'NOT'}
+KEYWORDS = {'AND', 'OR', 'NOT', 'W/3'}
 
 @dataclass
 class AST: ...
@@ -60,18 +60,17 @@ def lexer(string: str):
     i, n = 0, len(string)
     
     bar = tqdm.tqdm(total=n, unit="chars", desc="Lexing")
+
     while i < n:
         bar.n = i
         # add text
         bar.set_postfix({'char': string[i], 'surround': string[i-5:i+5]})
         bar.refresh()
-        # print(string[i:i+20])
-        # input("Press Enter to continue...")
         c = string[i]
         if c.isspace():
             i += 1
             continue
-
+       
         if c == '(':
             yield Tok('LPAREN', c, i)
             i += 1

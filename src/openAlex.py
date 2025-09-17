@@ -73,14 +73,12 @@ class Parser:
     def expect(self, *kinds) -> Tok:
         t = self.match(*kinds)
         if not t:
-            raise SyntaxError(f"expected one of {kinds}, got {self.peek().kind} at {self.peek().pos}")
+            raise SyntaxError(f"Expected one of {kinds} at {self.peek().pos}, got {self.peek().kind}")
         return t
 
     def parse(self):
         node = self.parse_or()
         if self.peek().kind != 'EOF':
-            print("test")
-            print(self.tokens[self.pos-2:self.pos])
             raise SyntaxError(f"Unexpected token {self.peek().kind} at {self.peek().pos}")
         return node
     
@@ -115,6 +113,8 @@ class Parser:
             self.pos += 1
             if self.match('LPAREN'):
                 arg = self.parse_or()
+                print(name, "(", arg, ")")
+                input("Press Enter to continue...")
                 self.expect('RPAREN')
                 return Call(name, arg)
 
