@@ -24,14 +24,15 @@ class Scopus:
 
     def __addAPIKey(self):
         apikey = input("Put in APIKEY")
+        insttoken = input("Insttoken (optional, press enter to skip)")
         # save to config file
         data = { 'apikey': apikey }
+        if insttoken != "":
+            data['insttoken'] = insttoken
         with open("./config/scopus.json", "w") as f:
             json.dump(str(data), f)
 
-
     def search(self):
-        print(self.query)
         search = ElsSearch(self.query, 'scopus')
         try: 
             # answer = search.execute(self.client, get_all=True)
