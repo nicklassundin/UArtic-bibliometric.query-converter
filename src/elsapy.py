@@ -5,8 +5,6 @@ import pandas as pd
 from elsapy.elsclient import ElsClient
 from elsapy.elssearch import ElsSearch
 
-
-
 class Scopus:
     def __init__(self, query):
         self.query = query
@@ -21,6 +19,7 @@ class Scopus:
         con_file.close()
         ## Initialize client
         self.client = ElsClient(config['apikey'])
+        self.client.inst_token = config['insttoken']
 
     def __addAPIKey(self):
         apikey = input("Put in APIKEY")
@@ -36,12 +35,14 @@ class Scopus:
         search = ElsSearch(self.query, 'scopus')
         try: 
             # answer = search.execute(self.client, get_all=True)
-            answer = search.execute(self.client, get_all=False)
-            with open("output/scopus.answer.json", "w") as f:
-                json.dump(str(e), f)
-            df = pd.DataFrame(answer.results)
+            search.execute(self.client, 
+                           get_all=False,
+                           view='STANDARD')
+            # TODO get field needed
+            df = pd.DataFrame(search.results)
             df.to_excel("scopus.xlsx", index=False)
         except Exception as e:
+            print("Error:", str(e))
             with open("output/scopus.error.json", "w") as f:
                 json.dump(str(e), f)
 

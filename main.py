@@ -85,7 +85,7 @@ if debug:
     # RAW_QUERY = 'TITLE-ABS-KEY("machine learning" AND "healthcare") AND PUBYEAR > 2020' 
 from src.elsapy import Scopus
 scopus = Scopus(RAW_QUERY)
-# scopus.search()
+scopus.search()
 
 input("Press Enter to continue to OpenAlex...")
 
