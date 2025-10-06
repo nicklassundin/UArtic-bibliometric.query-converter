@@ -3,3 +3,4 @@ descriptions
 logs
 output
 src/__pycache__
+dump.json
