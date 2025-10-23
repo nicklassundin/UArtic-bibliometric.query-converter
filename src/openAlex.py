@@ -136,9 +136,10 @@ class Parser:
 # Top-level function to parse a query string into an AST 
 def parse_query(query: str) -> AST:
     toks = list(lexer(query))
+    return toks
     # for t in toks:
         # print(t)
-    return Parser(toks).parse()
+    # return Parser(toks).parse()
 
 # A function to pretty-print the AST
 def dump(ast: AST, indent=0):
@@ -362,7 +363,11 @@ class OpenAlex:
     def __init__(self, query: str, debug: bool = False):
         self.query = query
         self.debug = debug
-        self.ast = parse_query(self.query)
+        # self.ast = parse_query(self.query)
+        self.toks = parse_query(self.query)
+    def parse(self):
+        self.ast = Parser(self.toks).parse()
+        return self.ast
     def dump(self):
         dump(self.ast)
     def produceMarkdown(self):

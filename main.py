@@ -50,16 +50,25 @@ strings = {}
 # RAW_QUERY = df.iloc[3,1] # PROBLEM TODO
 # print(df.iloc[3,0], RAW_QUERY[0:30])
 RAW_QUERY = df.iloc[4,1] # PROBLEM TODO
-print(df.iloc[4,0], RAW_QUERY[0:30])
+# print(df.iloc[4,0], RAW_QUERY[0:30])
 # RAW_QUERY = df.iloc[6,1] # PROBLEM TODO
 # print(df.iloc[6,0], RAW_QUERY[0:30])
 # RAW_QUERY = df.iloc[2,1]
 # RAW_QUERY = df.iloc[1,1]
 # RAW_QUERY = df.iloc[0,1]
 
+
+# export Lexer(RAW_QUERY)
+def getToks(query = RAW_QUERY):
+    from src.Lexer import Lexer
+    toks = list(lexer(query)) 
+    return toks
+
+
 # RAW_QUERY = df.iloc[14,1]
 print(RAW_QUERY[0:100])
 input("Press Enter to continue...")
+exit()
 # RAW_QUERY = df.iloc[14,1]
 # for i in range(len(df)):
 #     RAW_QUERY = df.iloc[i,0]
